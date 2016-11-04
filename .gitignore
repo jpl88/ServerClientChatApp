@@ -1,0 +1,16 @@
+# Mac
+.DS_Store
+
+# Eclipse
+*.jar
+*.class
+*.html
+*.classpath
+*.project
+*.prefs
+
+# Executables
+*.exe
+*.app
+
+/bin/
