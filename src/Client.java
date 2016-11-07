@@ -12,11 +12,6 @@ import javax.swing.JTextField;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-/**
- * 
- * @author justinlee
- *
- */
 public class Client {
 	
 	BufferedReader inputReader;
@@ -48,6 +43,14 @@ public class Client {
             JOptionPane.QUESTION_MESSAGE);
     }
     
+    private String getPortNumber() {
+        return JOptionPane.showInputDialog(
+            frame,
+            "Enter Port Number of the Server:",
+            "Welcome to the Chatter",
+            JOptionPane.QUESTION_MESSAGE);
+    }
+    
     private String getName() {
         return JOptionPane.showInputDialog(
             frame,
@@ -60,21 +63,20 @@ public class Client {
     	try{
 			// Make connection and initialize streams
 			String serverAddress = getServerAddress();
-			Socket socket = new Socket(serverAddress, 50026);
-			inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			outputWriter = new PrintWriter(socket.getOutputStream(), true);
-			
-
-			// Process all messages from server, according to the protocol.
-			while (true) {
-				String line = inputReader.readLine();
-				if (line.startsWith("SUBMITNAME")) {
-					outputWriter.println(getName());
-				} else if (line.startsWith("NAMEACCEPTED")) {
-					textField.setEditable(true);
-				} else if (line.startsWith("MESSAGE")) {
-					messageArea.append(line.substring(8) + "\n");
+			Integer portNum = Integer.parseInt(getPortNumber());
+			Socket socket = new Socket(serverAddress, portNum);
+			try{
+				inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				outputWriter = new PrintWriter(socket.getOutputStream(), true);
+				while (true) {
+					String line = inputReader.readLine();
+					if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
+					else if (line.startsWith("NAMEACCEPTED")) textField.setEditable(true);
+					else if (line.startsWith("MESSAGE")) messageArea.append(line.substring(8) + "\n");
 				}
+			}
+			finally{
+				socket.close();
 			}
     	}
     	catch(IOException e){
