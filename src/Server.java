@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
@@ -19,12 +20,11 @@ public class Server {
 	private static HashSet<PrintWriter> writers = new HashSet<PrintWriter>();
 	
 	public static void main(String[] args){
-		
 		try{
 			ServerSocket listener = new ServerSocket(PORT);
 			try{
-				System.out.println("Chat server is now running");
-				
+				InetAddress IP= InetAddress.getLocalHost();
+				System.out.println(IP.getHostAddress());
 				while (true) {
 					new MessageHandler(listener.accept()).start();
 				}
@@ -42,64 +42,88 @@ public class Server {
 	
 	private static class MessageHandler extends Thread{
 		
-		private String username;
-		private Socket socket;
-		private BufferedReader inputReader;
-		private PrintWriter outputWriter;
-		
-		public MessageHandler(Socket socket){
-			this.socket = socket;
-		}
-		
-		@Override
-		public void run(){
-			try{
-				inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				outputWriter = new PrintWriter(socket.getOutputStream(), true);
-				while (true) {
-					outputWriter.println("Attempting to submit username.");
-	                username = inputReader.readLine();
-	                if (username == null) {
-	                    throw new NullPointerException();
-	                }
-	                synchronized (usernames) {
-	                    if (!usernames.contains(username)) {
-	                        usernames.add(username);
-	                        break;
-	                    }
-	                }
-				}
-				outputWriter.println("Username accepted.");
-                writers.add(outputWriter);
+		private String name;
+        private Socket socket;
+        private BufferedReader in;
+        private PrintWriter out;
+
+        /**
+         * Constructs a handler thread, squirreling away the socket.
+         * All the interesting work is done in the run method.
+         */
+        public MessageHandler(Socket socket) {
+        	System.out.println("CLIENT server is now running");
+            this.socket = socket;
+        }
+
+        /**
+         * Services this thread's client by repeatedly requesting a
+         * screen name until a unique one has been submitted, then
+         * acknowledges the name and registers the output stream for
+         * the client in a global set, then repeatedly gets inputs and
+         * broadcasts them.
+         */
+        public void run() {
+            try {
+
+                // Create character streams for the socket.
+                in = new BufferedReader(new InputStreamReader(
+                    socket.getInputStream()));
+                out = new PrintWriter(socket.getOutputStream(), true);
+
+                // Request a name from this client.  Keep requesting until
+                // a name is submitted that is not already used.  Note that
+                // checking for the existence of a name and adding the name
+                // must be done while locking the set of names.
                 while (true) {
-                    String input = inputReader.readLine();
+                    out.println("SUBMITNAME");
+                    name = in.readLine();
+                    if (name == null) {
+                        return;
+                    }
+                    synchronized (usernames) {
+                        if (!usernames.contains(name)) {
+                            usernames.add(name);
+                            break;
+                        }
+                    }
+                }
+
+                // Now that a successful name has been chosen, add the
+                // socket's print writer to the set of all writers so
+                // this client can receive broadcast messages.
+                out.println("NAMEACCEPTED");
+                writers.add(out);
+
+                // Accept messages from this client and broadcast them.
+                // Ignore other clients that cannot be broadcasted to.
+                while (true) {
+                    String input = in.readLine();
                     if (input == null) {
-                        throw new NullPointerException();
+                        return;
                     }
                     for (PrintWriter writer : writers) {
-                        writer.println("MESSAGE " + username + ": " + input);
+                        writer.println("MESSAGE " + name + ": " + input);
                     }
                 }
-			}
-			catch(NullPointerException e){
-				System.out.println(e.getMessage());
-			}
-			catch(IOException e){
-				System.out.println(e.getMessage());
-			}
-			finally{
-				if (username != null) {
-                    usernames.remove(username);
+            } catch (IOException e) {
+                System.out.println(e);
+            } finally {
+                // This client is going down!  Remove its name and its print
+                // writer from the sets, and close its socket.
+                if (name != null) {
+                    usernames.remove(name);
                 }
-                if (outputWriter != null) {
-                    writers.remove(outputWriter);
+                if (out != null) {
+                    writers.remove(out);
                 }
                 try {
                     socket.close();
                 } catch (IOException e) {
+                	System.out.println("MessageHandler: " + e.getMessage());
                 }
-			}
-		}
+            }
+        }
 		
 	}  //end class MessageHandler
 

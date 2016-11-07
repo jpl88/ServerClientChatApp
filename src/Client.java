@@ -58,26 +58,27 @@ public class Client {
     
     private void run(){
     	try{
-        // Make connection and initialize streams
-        String serverAddress = getServerAddress();
-        Socket socket = new Socket(serverAddress, 9001);
-        inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        outputWriter = new PrintWriter(socket.getOutputStream(), true);
+			// Make connection and initialize streams
+			String serverAddress = getServerAddress();
+			Socket socket = new Socket(serverAddress, 50026);
+			inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			outputWriter = new PrintWriter(socket.getOutputStream(), true);
+			
 
-        // Process all messages from server, according to the protocol.
-        while (true) {
-            String line = inputReader.readLine();
-            if (line.startsWith("SUBMITNAME")) {
-                outputWriter.println(getName());
-            } else if (line.startsWith("NAMEACCEPTED")) {
-                textField.setEditable(true);
-            } else if (line.startsWith("MESSAGE")) {
-                messageArea.append(line.substring(8) + "\n");
-            }
-        }
+			// Process all messages from server, according to the protocol.
+			while (true) {
+				String line = inputReader.readLine();
+				if (line.startsWith("SUBMITNAME")) {
+					outputWriter.println(getName());
+				} else if (line.startsWith("NAMEACCEPTED")) {
+					textField.setEditable(true);
+				} else if (line.startsWith("MESSAGE")) {
+					messageArea.append(line.substring(8) + "\n");
+				}
+			}
     	}
     	catch(IOException e){
-    		System.out.println("Client: " + e.getMessage());
+    		System.out.println("Client Error: " + e.getMessage());
     	}
     }
     
