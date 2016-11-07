@@ -12,26 +12,32 @@ import java.util.HashSet;
  */
 public class Server {
 	
-	private static final int PORT = 500026;
+	private static final int PORT = 50026;
 	
 	private static HashSet<String> usernames = new HashSet<String>();
 	
 	private static HashSet<PrintWriter> writers = new HashSet<PrintWriter>();
 	
 	public static void main(String[] args){
+		
 		try{
-			System.out.println("Chat server is now running");
 			ServerSocket listener = new ServerSocket(PORT);
-			while(true){
-				new MessageHandler(listener.accept()).start();
+			try{
+				System.out.println("Chat server is now running");
+				
+				while (true) {
+					new MessageHandler(listener.accept()).start();
+				}
+			}
+			finally{
+				listener.close();
 			}
 		}
 		catch(IOException e){
-			throw new IOException(e.getMessage());
+			System.out.println("Server: " + e.getMessage());
 		}
-		finally{
-			listener.close();
-		}
+		
+		
 	}
 	
 	private static class MessageHandler extends Thread{
@@ -45,12 +51,13 @@ public class Server {
 			this.socket = socket;
 		}
 		
+		@Override
 		public void run(){
 			try{
 				inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 				outputWriter = new PrintWriter(socket.getOutputStream(), true);
 				while (true) {
-					outputWriter.println("Attempting to submit username");
+					outputWriter.println("Attempting to submit username.");
 	                username = inputReader.readLine();
 	                if (username == null) {
 	                    throw new NullPointerException();
@@ -62,7 +69,7 @@ public class Server {
 	                    }
 	                }
 				}
-				outputWriter.println("NAMEACCEPTED");
+				outputWriter.println("Username accepted.");
                 writers.add(outputWriter);
                 while (true) {
                     String input = inputReader.readLine();
