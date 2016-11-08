@@ -20,6 +20,8 @@ public class Client {
     JTextField textField = new JTextField(40);
     JTextArea messageArea = new JTextArea(10, 40);
     
+    private boolean inChat = false;
+    
     public Client(){
         textField.setEditable(false);
         messageArea.setEditable(false);
@@ -29,14 +31,18 @@ public class Client {
         
         textField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+            	System.out.println(inChat);
             	if(textField.getText().equals("Start Chat")){
             		String chatPartener = getChatPartener();
-            		System.out.println("NEWCHATREQUEST" + chatPartener);
             		outputWriter.println("NEWCHATREQUEST" + chatPartener);
-            		outputWriter.toString();
             	}
-                outputWriter.println(textField.getText());
-                textField.setText("");
+            	else if(textField.getText().equals("Exit Chat")){
+            		outputWriter.println("EXITCHATREQUEST");
+            	}
+            	else if (inChat){
+            		outputWriter.println("CHATMESSAGE" + textField.getText());
+            	}
+            	textField.setText("");
             }
         });
     }
@@ -82,25 +88,20 @@ public class Client {
 			inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			outputWriter = new PrintWriter(socket.getOutputStream(), true);
 			while (true) {
-				boolean inChat = false;
 				String line = inputReader.readLine();
 				if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
 				else if (line.startsWith("NAMEACCEPTED")) textField.setEditable(true);
-				System.out.println(textField.getText());
-//				if(textField.getText().equals("Start Chat")){
-//					String chatPartener = getChatPartener();
-//					System.out.println(chatPartener);
-//					messageArea.append("Attempting to start chat with: " + chatPartener + "\n");
-//					
-//				}
-//				if (line.startsWith("MESSAGE")) messageArea.append(line.substring(8) + "\n");
-
-				while(inChat){
-				
+				else if (line.startsWith("CHATINITIALIZED")){
+					messageArea.append("Chat initialized.\n");
+					inChat = true;
 				}
-			}
-			
-			
+				else if (line.startsWith("FAILEDCHATINITIALIZE")) messageArea.append(line.substring(21) + "\n");
+				else if(line.startsWith("CHATMESSAGE")) messageArea.append(line.substring(12) + "\n");
+				else if(line.startsWith("EXITCHATREQUEST")){
+					messageArea.append("Exited Chat.\n");
+					inChat = false;
+				}
+			}	
     	}
     	catch(IOException e){
     		System.out.println("Client Error: " + e.getMessage());

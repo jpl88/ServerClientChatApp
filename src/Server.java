@@ -12,7 +12,7 @@ public class Server {
 	private static final int PORT = 50026;
 	private static ArrayList<String> usernames = new ArrayList<String>();
 	private static ArrayList<PrintWriter> writers = new ArrayList<PrintWriter>();
-	
+	private static ArrayList<String> busyUsernames = new ArrayList<String>();
 	
 	public static void main(String[] args){
 		try{
@@ -61,20 +61,46 @@ public class Server {
                 }
                 out.println("NAMEACCEPTED");
                 writers.add(out);
-                while (true) {
-                    String input = in.readLine();
-                    if (input == null) return;
-                    if(input.contains("NEWCHATREQUEST")){
-                    	int userIndex = usernames.lastIndexOf(input.substring(14));
-                    	if(userIndex != -1){
-                    		writers.get(userIndex).println("CHATINITIALIZED " + input.substring(14));
+                synchronized (busyUsernames){
+                	int userIndex = -1;
+                    while (true) {
+    					String input = in.readLine();
+    					if (input == null)
+    						return;
+    					else if (input.contains("NEWCHATREQUEST")) {
+    						userIndex = usernames.lastIndexOf(input.substring(14));
+    						if (userIndex != -1) {
+    							if (!(busyUsernames.contains(input.substring(14)) || busyUsernames.contains(usernames.get(writers.lastIndexOf(out))))) {
+    								busyUsernames.add(input.substring(14));
+    								busyUsernames.add(usernames.get(writers.lastIndexOf(out)));
+    								writers.get(userIndex).println("CHATINITIALIZED " + input.substring(14));
+    								out.println("CHATINITIALIZED " + input.substring(14));
+    							} 
+    							else {
+    								out.println("FAILEDCHATINITIALIZE User is busy.");
+    							}
+    						} 
+    						else {
+    							out.println("FAILEDCHATINITIALIZE User doesn't exits.");
+    						}
                     	}
-                    	else{
-                    		out.println("User isn't availiable to chat with.");
-                    	}
-                    }
-                    for (PrintWriter writer : writers) {
-                        writer.println("MESSAGE " + name + ": " + input);
+    					else if(input.contains("EXITCHATREQUEST")){
+    						writers.get(userIndex).println("EXITCHATREQUEST");
+    						out.println("EXITCHATREQUEST");
+    						while(busyUsernames.contains(name)){
+    	                		busyUsernames.remove(name);
+    	                	} 
+    						while(busyUsernames.contains(usernames.get(userIndex))){
+    							busyUsernames.remove(usernames.get(userIndex));
+    						}
+    					}
+    					else if(input.contains("CHATMESSAGE")){
+    						writers.get(userIndex).println("CHATMESSAGE " + name + ": " + input.substring(11));
+    						out.println("CHATMESSAGE " + name + ": " + input.substring(11));
+    					}
+    					System.out.println(input);
+    					System.out.println(usernames.toString());
+    					System.out.println(busyUsernames.toString());
                     }
                 }
             } 
@@ -82,7 +108,9 @@ public class Server {
                 System.out.println(e);
             } 
             finally {
-                if (name != null) usernames.remove(name);
+                if (name != null){
+                	usernames.remove(name); 	
+                }
                 if (out != null) writers.remove(out);
                 try{
                 	socket.close();
