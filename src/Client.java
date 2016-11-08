@@ -29,6 +29,12 @@ public class Client {
         
         textField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+            	if(textField.getText().equals("Start Chat")){
+            		String chatPartener = getChatPartener();
+            		System.out.println("NEWCHATREQUEST" + chatPartener);
+            		outputWriter.println("NEWCHATREQUEST" + chatPartener);
+            		outputWriter.toString();
+            	}
                 outputWriter.println(textField.getText());
                 textField.setText("");
             }
@@ -59,25 +65,42 @@ public class Client {
             JOptionPane.PLAIN_MESSAGE);
     }
     
+    private String getChatPartener(){
+    	return JOptionPane.showInputDialog(
+    		frame,
+    		"Choose a user to chat with.",
+    		"Chat Partener Selection.",
+    		JOptionPane.PLAIN_MESSAGE);
+    }
+    
     private void run(){
     	try{
 			// Make connection and initialize streams
 			String serverAddress = getServerAddress();
 			Integer portNum = Integer.parseInt(getPortNumber());
 			Socket socket = new Socket(serverAddress, portNum);
-			try{
-				inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				outputWriter = new PrintWriter(socket.getOutputStream(), true);
-				while (true) {
-					String line = inputReader.readLine();
-					if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
-					else if (line.startsWith("NAMEACCEPTED")) textField.setEditable(true);
-					else if (line.startsWith("MESSAGE")) messageArea.append(line.substring(8) + "\n");
+			inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			outputWriter = new PrintWriter(socket.getOutputStream(), true);
+			while (true) {
+				boolean inChat = false;
+				String line = inputReader.readLine();
+				if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
+				else if (line.startsWith("NAMEACCEPTED")) textField.setEditable(true);
+				System.out.println(textField.getText());
+//				if(textField.getText().equals("Start Chat")){
+//					String chatPartener = getChatPartener();
+//					System.out.println(chatPartener);
+//					messageArea.append("Attempting to start chat with: " + chatPartener + "\n");
+//					
+//				}
+//				if (line.startsWith("MESSAGE")) messageArea.append(line.substring(8) + "\n");
+
+				while(inChat){
+				
 				}
 			}
-			finally{
-				socket.close();
-			}
+			
+			
     	}
     	catch(IOException e){
     		System.out.println("Client Error: " + e.getMessage());

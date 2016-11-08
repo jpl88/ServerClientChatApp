@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -12,9 +13,13 @@ public class Server {
 	private static ArrayList<String> usernames = new ArrayList<String>();
 	private static ArrayList<PrintWriter> writers = new ArrayList<PrintWriter>();
 	
+	
 	public static void main(String[] args){
 		try{
 			ServerSocket listener = new ServerSocket(PORT);
+			System.out.println("ServerSocekt is a sucess");
+			InetAddress IP=InetAddress.getLocalHost();
+			System.out.println(IP.getHostAddress());
 			try{
 				while (true) new MessageHandler(listener.accept()).start();
 			}
@@ -59,6 +64,15 @@ public class Server {
                 while (true) {
                     String input = in.readLine();
                     if (input == null) return;
+                    if(input.contains("NEWCHATREQUEST")){
+                    	int userIndex = usernames.lastIndexOf(input.substring(14));
+                    	if(userIndex != -1){
+                    		writers.get(userIndex).println("CHATINITIALIZED " + input.substring(14));
+                    	}
+                    	else{
+                    		out.println("User isn't availiable to chat with.");
+                    	}
+                    }
                     for (PrintWriter writer : writers) {
                         writer.println("MESSAGE " + name + ": " + input);
                     }
