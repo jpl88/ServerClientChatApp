@@ -6,13 +6,14 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class Server {
 	
 	private static final int PORT = 50026;
 	private static ArrayList<String> usernames = new ArrayList<String>();
 	private static ArrayList<PrintWriter> writers = new ArrayList<PrintWriter>();
-	private static ArrayList<String> busyUsernames = new ArrayList<String>();
+	private static ArrayList<Chat> chats = new ArrayList<Chat>();
 	
 	public static void main(String[] args){
 		try{
@@ -37,20 +38,32 @@ public class Server {
 		
 		private String name;
         private Socket socket;
-        private BufferedReader in;
-        private PrintWriter out;
+        private BufferedReader inputReader;
+        private PrintWriter outputWriter;
 
         public MessageHandler(Socket socket) {
             this.socket = socket;
         }
 
+        
+        private Chat findMyChat(String username){
+        	synchronized (chats){
+        		Objects.requireNonNull(username);
+            	for(int i = 0; i < chats.size(); i++){
+            		if(chats.get(i).getUsername1().equals(username) || chats.get(i).getUsername2().equals(username)){
+            			return chats.get(i);
+            		}
+            	}
+            	return null;
+        	}
+        }
         public void run() {
             try{
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                out = new PrintWriter(socket.getOutputStream(), true);
+                inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                outputWriter = new PrintWriter(socket.getOutputStream(), true);
                 while (true) {
-                    out.println("SUBMITNAME");
-                    name = in.readLine();
+                    outputWriter.println("SUBMITNAME");
+                    name = inputReader.readLine();
                     if (name == null) return;
                     synchronized (usernames) {
                         if (!usernames.contains(name)) {
@@ -59,59 +72,57 @@ public class Server {
                         }
                     }
                 }
-                out.println("NAMEACCEPTED");
-                writers.add(out);
-                synchronized (busyUsernames){
-                	int userIndex = -1;
-                    while (true) {
-    					String input = in.readLine();
-    					if (input == null)
-    						return;
-    					else if (input.contains("NEWCHATREQUEST")) {
-    						userIndex = usernames.lastIndexOf(input.substring(14));
-    						if (userIndex != -1) {
-    							if (!(busyUsernames.contains(input.substring(14)) || busyUsernames.contains(usernames.get(writers.lastIndexOf(out))))) {
-    								busyUsernames.add(input.substring(14));
-    								busyUsernames.add(usernames.get(writers.lastIndexOf(out)));
-    								writers.get(userIndex).println("CHATINITIALIZED " + input.substring(14));
-    								out.println("CHATINITIALIZED " + input.substring(14));
-    							} 
-    							else {
-    								out.println("FAILEDCHATINITIALIZE User is busy.");
-    							}
-    						} 
-    						else {
-    							out.println("FAILEDCHATINITIALIZE User doesn't exits.");
-    						}
-                    	}
-    					else if(input.contains("EXITCHATREQUEST")){
-    						writers.get(userIndex).println("EXITCHATREQUEST");
-    						out.println("EXITCHATREQUEST");
-    						while(busyUsernames.contains(name)){
-    	                		busyUsernames.remove(name);
-    	                	} 
-    						while(busyUsernames.contains(usernames.get(userIndex))){
-    							busyUsernames.remove(usernames.get(userIndex));
-    						}
-    					}
-    					else if(input.contains("CHATMESSAGE")){
-    						writers.get(userIndex).println("CHATMESSAGE " + name + ": " + input.substring(11));
-    						out.println("CHATMESSAGE " + name + ": " + input.substring(11));
-    					}
-    					System.out.println(input);
-    					System.out.println(usernames.toString());
-    					System.out.println(busyUsernames.toString());
-                    }
+                outputWriter.println("NAMEACCEPTED");
+                writers.add(outputWriter);
+                while(true){
+                	String input = inputReader.readLine();
+                	if(input == null) continue;
+                	else if(input.startsWith("NEWCHATREQUEST")){
+                		synchronized (chats){
+                			synchronized (writers){
+                				if(!(chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(14))) || 
+                        				chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(14))) || 
+                        				chats.stream().anyMatch(t -> t.getUsername1().equals(name)) || 
+                        				chats.stream().anyMatch(t -> t.getUsername2().equals(name)) || name.equals(input.substring(14)))){
+                        			Chat temp = new Chat(input.substring(14), name, writers.get(usernames.lastIndexOf(input.substring(14))), outputWriter);
+                        			chats.add(temp);
+                        			temp.getPW1().println("CHATINITIALIZED " + temp.getUsername2());
+                        			temp.getPW2().println("CHATINITIALIZED " + temp.getUsername1());
+                        		}
+                				else{
+                        			outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
+                        		}
+                			}
+                		}	
+                	}
+                	else if(input.startsWith("CHATMESSAGE")){
+                		Chat temp = findMyChat(name);
+                		if(temp != null){
+                			temp.getPW1().println("CHATMESSAGE " + name + ": " + input.substring(11));
+                			temp.getPW2().println("CHATMESSAGE " + name + ": " + input.substring(11));
+                		}	
+                	}
+                	else if(input.startsWith("EXITCHATREQUEST")){
+                		Chat temp = findMyChat(name);
+                		if(temp != null){
+                			temp.getPW1().println("EXITCHATREQUEST");
+                			temp.getPW2().println("EXITCHATREQUEST");
+                		}
+                		chats.remove(temp);
+                	}
+                		
                 }
             } 
             catch (IOException e) {
-                System.out.println(e);
+                System.out.println(e.getMessage());
             } 
             finally {
                 if (name != null){
-                	usernames.remove(name); 	
+                	usernames.remove(name); 
+                	Chat temp = findMyChat(name);
+                	chats.remove(temp);
                 }
-                if (out != null) writers.remove(out);
+                if (outputWriter != null) writers.remove(outputWriter);
                 try{
                 	socket.close();
                 }

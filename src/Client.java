@@ -31,7 +31,6 @@ public class Client {
         
         textField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-            	System.out.println(inChat);
             	if(textField.getText().equals("Start Chat")){
             		String chatPartener = getChatPartener();
             		outputWriter.println("NEWCHATREQUEST" + chatPartener);
@@ -51,7 +50,7 @@ public class Client {
         return JOptionPane.showInputDialog(
             frame,
             "Enter IP Address of the Server:",
-            "Welcome to the Chatter",
+            "Chat Setup",
             JOptionPane.QUESTION_MESSAGE);
     }
     
@@ -59,7 +58,7 @@ public class Client {
         return JOptionPane.showInputDialog(
             frame,
             "Enter Port Number of the Server:",
-            "Welcome to the Chatter",
+            "Chat Setup",
             JOptionPane.QUESTION_MESSAGE);
     }
     
@@ -67,7 +66,7 @@ public class Client {
         return JOptionPane.showInputDialog(
             frame,
             "Choose a screen name:",
-            "Screen name selection",
+            "SChat Setup",
             JOptionPane.PLAIN_MESSAGE);
     }
     
@@ -75,7 +74,7 @@ public class Client {
     	return JOptionPane.showInputDialog(
     		frame,
     		"Choose a user to chat with.",
-    		"Chat Partener Selection.",
+    		"Chat Setup",
     		JOptionPane.PLAIN_MESSAGE);
     }
     
@@ -90,9 +89,9 @@ public class Client {
 			while (true) {
 				String line = inputReader.readLine();
 				if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
-				else if (line.startsWith("NAMEACCEPTED")) textField.setEditable(true);
+				else if (line.startsWith("NAMEACCEPTED"))textField.setEditable(true);
 				else if (line.startsWith("CHATINITIALIZED")){
-					messageArea.append("Chat initialized.\n");
+					messageArea.append("Chat initialized." + line.substring(15) + "\n");
 					inChat = true;
 				}
 				else if (line.startsWith("FAILEDCHATINITIALIZE")) messageArea.append(line.substring(21) + "\n");
