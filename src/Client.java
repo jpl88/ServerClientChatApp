@@ -29,6 +29,13 @@ public class Client {
         frame.getContentPane().add(new JScrollPane(messageArea), "North");
         frame.pack();
         
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+               outputWriter.println("EXITREQUEST");
+            }
+        });
+        
         textField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
             	if (inChat){
@@ -36,6 +43,9 @@ public class Client {
             			String newChatPartener = getChatPartener();
             			outputWriter.println("NEWCHATREQUESTINCHAT" + newChatPartener);
             		}
+            		else if(textField.getText().equals("Exit Chat")){
+                		outputWriter.println("EXITCHATREQUEST");
+                	}
             		else{
             			outputWriter.println("CHATMESSAGE" + textField.getText());
             		}	
@@ -46,6 +56,9 @@ public class Client {
             	else if(textField.getText().equals("Start Chat")){
             		String chatPartener = getChatPartener();
             		outputWriter.println("NEWCHATREQUEST" + chatPartener);
+            	}
+            	else{
+            		messageArea.append("You aren't currently in a chat with anybody:\n" + textField.getText() + "\nwas not sent and bounced back\n");
             	}
             	textField.setText("");
             }
@@ -71,9 +84,17 @@ public class Client {
     private String getName() {
         return JOptionPane.showInputDialog(
             frame,
-            "Choose a screen name:",
-            "SChat Setup",
+            "Choose a user name:",
+            "Chat Setup",
             JOptionPane.PLAIN_MESSAGE);
+    }
+    
+    private String retryName(){
+    	return JOptionPane.showInputDialog(
+    		frame,
+    		"You failed to input a unque user name. Please try again:",
+    		"Chat Setup",
+    		JOptionPane.PLAIN_MESSAGE);
     }
     
     private String getChatPartener(){
@@ -95,6 +116,7 @@ public class Client {
 			while (true) {
 				String line = inputReader.readLine();
 				if (line.startsWith("SUBMITNAME")) outputWriter.println(getName());
+				else if(line.startsWith("FAILEDSUBMITNAME")) outputWriter.println(retryName());
 				else if (line.startsWith("NAMEACCEPTED"))textField.setEditable(true);
 				else if (line.startsWith("CHATINITIALIZED")){
 					messageArea.append("Chat initialized." + line.substring(15) + "\n");
@@ -115,7 +137,6 @@ public class Client {
     
     public static void main(String[] agrs){
     	Client c = new Client();
-    	c.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         c.frame.setVisible(true);
         c.run();
     }

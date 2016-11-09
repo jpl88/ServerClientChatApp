@@ -62,15 +62,32 @@ public class Server {
             try{
                 inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 outputWriter = new PrintWriter(socket.getOutputStream(), true);
+                boolean hasFailed = false;
                 while (true) {
-                    outputWriter.println("SUBMITNAME");
-                    name = inputReader.readLine();
-                    if (name == null) return;
-                    synchronized (usernames) {
-                        if (!usernames.contains(name)) {
-                            usernames.add(name);
-                            break;
-                        }
+                	if(!hasFailed){
+						outputWriter.println("SUBMITNAME");
+						name = inputReader.readLine();
+						if (name == null) return;
+						synchronized (usernames) {
+							if (!usernames.contains(name)) {
+								usernames.add(name);
+								break;
+							}
+							else{
+								hasFailed = true;
+							}
+						}
+                	}
+                    else{
+                    	outputWriter.println("FAILEDSUBMITNAME");
+                    	name = inputReader.readLine();
+						if (name == null) return;
+						synchronized (usernames) {
+							if (!usernames.contains(name)) {
+								usernames.add(name);
+								break;
+							}
+						}
                     }
                 }
                 outputWriter.println("NAMEACCEPTED");
@@ -78,55 +95,74 @@ public class Server {
                 while(true){
                 	String input = inputReader.readLine();
                 	if(input == null) continue;
-                	else if(input.startsWith("NEWCHATREQUEST")){
-                		synchronized (chats){
-                			synchronized (writers){
-                				if(!(chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(14))) || 
-                        				chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(14))) || 
-                        				chats.stream().anyMatch(t -> t.getUsername1().equals(name)) || 
-                        				chats.stream().anyMatch(t -> t.getUsername2().equals(name)) || name.equals(input.substring(14)))){
-                        			Chat temp = new Chat(input.substring(14), name, writers.get(usernames.lastIndexOf(input.substring(14))), outputWriter);
-                        			chats.add(temp);
-                        			temp.getPW1().println("CHATINITIALIZED " + temp.getUsername2());
-                        			temp.getPW2().println("CHATINITIALIZED " + temp.getUsername1());
-                        		}
-                				else {
-                        			outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
+                	else if(input.startsWith("NEWCHATREQUESTINCHAT")){
+                		synchronized (usernames){
+                			if(usernames.stream().anyMatch(t -> t.equals(input.substring(20)))){
+                				synchronized (chats){
+                        			synchronized (writers){
+                        				//Person is in a chat that doesn't include you.
+                        				System.out.println((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
+                        					!chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
+                        					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
+                                			!chats.stream().anyMatch(t -> t.getUsername1().equals(name))));
+                                			
+                        				if((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
+                        					!chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
+                        					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
+                                			!chats.stream().anyMatch(t -> t.getUsername1().equals(name)))){
+                        					outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
+                        				}
+                        				//Person is in a chat with you already.
+                        				else if((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
+                            					chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
+                            					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
+                                    			chats.stream().anyMatch(t -> t.getUsername1().equals(name)))){
+                        					outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
+                        				}
+                        				//Person is not in a chat
+                        				else{
+                        					Chat old = findMyChat(name);
+                        					old.getPW1().println("EXITCHATREQUEST");
+                                			old.getPW2().println("EXITCHATREQUEST");
+                                			chats.remove(old);
+                        					Chat temp = new Chat(input.substring(20), name, writers.get(usernames.lastIndexOf(input.substring(20))), outputWriter);
+                                			chats.add(temp);
+                                			temp.getPW1().println("CHATINITIALIZED " + temp.getUsername2());
+                                			temp.getPW2().println("CHATINITIALIZED " + temp.getUsername1());
+                        				}
+                        			}
                         		}
                 			}
-                		}	
-                	}
-                	else if(input.startsWith("NEWCHATREQUESTINCHAT")){
-                		synchronized (chats){
-                			synchronized (writers){
-                				//Person is in a chat that doesn't include you.
-                				System.out.println((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
-                					!chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
-                					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
-                        			!chats.stream().anyMatch(t -> t.getUsername1().equals(name))));
-                        			
-                				if((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
-                					!chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
-                					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
-                        			!chats.stream().anyMatch(t -> t.getUsername1().equals(name)))){
-                					outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
-                				}
-                				//Person is in a chat with you already.
-                				else if((chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(20))) && 
-                    					chats.stream().anyMatch(t -> t.getUsername2().equals(name))) || 
-                    					(chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(20))) && 
-                            			chats.stream().anyMatch(t -> t.getUsername1().equals(name)))){
-                					outputWriter.println("FAILEDCHATINITIALIZE You are already in a chat with this user.");
-                				}
-                				//Person is not in a chat
-                				else{
-                					Chat temp = new Chat(input.substring(14), name, writers.get(usernames.lastIndexOf(input.substring(20))), outputWriter);
-                        			chats.add(temp);
-                        			temp.getPW1().println("CHATINITIALIZED " + temp.getUsername2());
-                        			temp.getPW2().println("CHATINITIALIZED " + temp.getUsername1());
-                				}
+                			else{
+                				outputWriter.println("FAILEDCHATINITIALIZE User doesn't exist.");
                 			}
                 		}
+                		
+                	}
+                	else if(input.startsWith("NEWCHATREQUEST")){
+                		synchronized (usernames){
+                			if(usernames.stream().anyMatch(t -> t.equals(input.substring(14)))){
+                				synchronized (chats){
+                        			synchronized (writers){
+                        				if(!(chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(14))) || 
+                                				chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(14))) || 
+                                				chats.stream().anyMatch(t -> t.getUsername1().equals(name)) || 
+                                				chats.stream().anyMatch(t -> t.getUsername2().equals(name)) || name.equals(input.substring(14)))){
+                                			Chat temp = new Chat(input.substring(14), name, writers.get(usernames.lastIndexOf(input.substring(14))), outputWriter);
+                                			chats.add(temp);
+                                			temp.getPW1().println("CHATINITIALIZED " + temp.getUsername2());
+                                			temp.getPW2().println("CHATINITIALIZED " + temp.getUsername1());
+                                		}
+                        				else {
+                                			outputWriter.println("FAILEDCHATINITIALIZE User is busy.");
+                                		}
+                        			}
+                        		}	
+                			}
+                			else{
+                    			outputWriter.println("FAILEDCHATINITIALIZE User doesn't exist.");
+                    		}
+                		}	
                 	}
                 	else if(input.startsWith("CHATMESSAGE")){
                 		Chat temp = findMyChat(name);
@@ -142,6 +178,15 @@ public class Server {
                 			temp.getPW2().println("EXITCHATREQUEST");
                 		}
                 		chats.remove(temp);
+                	}
+                	else if(input.startsWith("EXITREQUEST")){
+                		synchronized (usernames) {
+                			usernames.remove(name);
+                		}
+                		Chat temp = findMyChat(name);
+                		temp.getPW1().println("EXITCHATREQUEST");
+            			temp.getPW2().println("EXITCHATREQUEST");
+                    	chats.remove(temp);
                 	}
                 		
                 }
