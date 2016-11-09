@@ -31,15 +31,21 @@ public class Client {
         
         textField.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-            	if(textField.getText().equals("Start Chat")){
-            		String chatPartener = getChatPartener();
-            		outputWriter.println("NEWCHATREQUEST" + chatPartener);
+            	if (inChat){
+            		if(textField.getText().equals("Start Chat")){
+            			String newChatPartener = getChatPartener();
+            			outputWriter.println("NEWCHATREQUESTINCHAT" + newChatPartener);
+            		}
+            		else{
+            			outputWriter.println("CHATMESSAGE" + textField.getText());
+            		}	
             	}
             	else if(textField.getText().equals("Exit Chat")){
             		outputWriter.println("EXITCHATREQUEST");
             	}
-            	else if (inChat){
-            		outputWriter.println("CHATMESSAGE" + textField.getText());
+            	else if(textField.getText().equals("Start Chat")){
+            		String chatPartener = getChatPartener();
+            		outputWriter.println("NEWCHATREQUEST" + chatPartener);
             	}
             	textField.setText("");
             }
