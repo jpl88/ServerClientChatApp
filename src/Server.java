@@ -10,17 +10,22 @@ import java.util.Objects;
 
 public class Server {
 	
+	//Private Fields
 	private static final int PORT = 50026;
 	private static ArrayList<String> usernames = new ArrayList<String>();
 	private static ArrayList<PrintWriter> writers = new ArrayList<PrintWriter>();
 	private static ArrayList<Chat> chats = new ArrayList<Chat>();
 	
+	//Main method
 	public static void main(String[] args){
 		try{
+			//Setup Socket.
 			ServerSocket listener = new ServerSocket(PORT);
 			System.out.println("ServerSocekt is a sucess");
+			//Print IP adress of the server
 			InetAddress IP=InetAddress.getLocalHost();
 			System.out.println(IP.getHostAddress());
+			//Create thread every time socket ouptputs data.
 			try{
 				while (true) new MessageHandler(listener.accept()).start();
 			}
@@ -36,16 +41,18 @@ public class Server {
 	
 	private static class MessageHandler extends Thread{
 		
+		//Private fields
 		private String name;
         private Socket socket;
         private BufferedReader inputReader;
         private PrintWriter outputWriter;
 
+        //Constructor method.
         public MessageHandler(Socket socket) {
             this.socket = socket;
         }
-
         
+        //Helper method to find the first chat the user is a member of.
         private Chat findMyChat(String username){
         	synchronized (chats){
         		Objects.requireNonNull(username);
@@ -58,12 +65,20 @@ public class Server {
         	}
         }
         
+        //Run method for the thread
         public void run() {
             try{
+            	//Create input and output interpreters/writers.
                 inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 outputWriter = new PrintWriter(socket.getOutputStream(), true);
+                
+                //If has failed to enter unique username.
                 boolean hasFailed = false;
+                
+                //Continuously prompt for unique username until correct.
                 while (true) {
+                	
+                	//First time trying for unique username.
                 	if(!hasFailed){
 						outputWriter.println("SUBMITNAME");
 						name = inputReader.readLine();
@@ -78,6 +93,7 @@ public class Server {
 							}
 						}
                 	}
+                	//After failing typing in username.
                     else{
                     	outputWriter.println("FAILEDSUBMITNAME");
                     	name = inputReader.readLine();
@@ -90,11 +106,16 @@ public class Server {
 						}
                     }
                 }
+                //Accept name and add the writer to the writers list.
                 outputWriter.println("NAMEACCEPTED");
-                writers.add(outputWriter);
+                synchronized (writers){
+                	writers.add(outputWriter);
+                }
+                //Handle messages sent from client.
                 while(true){
                 	String input = inputReader.readLine();
                 	if(input == null) continue;
+                	//Handles new chat requests from in a chat.
                 	else if(input.startsWith("NEWCHATREQUESTINCHAT")){
                 		synchronized (usernames){
                 			if(usernames.stream().anyMatch(t -> t.equals(input.substring(20)))){
@@ -139,11 +160,13 @@ public class Server {
                 		}
                 		
                 	}
+                	//Handles a new chat request from a listener.
                 	else if(input.startsWith("NEWCHATREQUEST")){
                 		synchronized (usernames){
                 			if(usernames.stream().anyMatch(t -> t.equals(input.substring(14)))){
                 				synchronized (chats){
                         			synchronized (writers){
+                        				//Create chat if none of them are in chat.
                         				if(!(chats.stream().anyMatch(t -> t.getUsername1().equals(input.substring(14))) || 
                                 				chats.stream().anyMatch(t -> t.getUsername2().equals(input.substring(14))) || 
                                 				chats.stream().anyMatch(t -> t.getUsername1().equals(name)) || 
@@ -164,6 +187,7 @@ public class Server {
                     		}
                 		}	
                 	}
+                	//Handles a message in a chat
                 	else if(input.startsWith("CHATMESSAGE")){
                 		Chat temp = findMyChat(name);
                 		if(temp != null){
@@ -171,6 +195,7 @@ public class Server {
                 			temp.getPW2().println("CHATMESSAGE " + name + ": " + input.substring(11));
                 		}	
                 	}
+                	//Handles an exit chat request.
                 	else if(input.startsWith("EXITCHATREQUEST")){
                 		Chat temp = findMyChat(name);
                 		if(temp != null){
@@ -179,9 +204,17 @@ public class Server {
                 		}
                 		chats.remove(temp);
                 	}
+                	//Handles closing of chat window.
                 	else if(input.startsWith("EXITREQUEST")){
                 		synchronized (usernames) {
-                			usernames.remove(name);
+                			if(name != null){
+                				usernames.remove(name);
+                			}	
+                		}
+                		synchronized (writers){
+                			if(writers != null){
+                				writers.remove(outputWriter);
+                			}
                 		}
                 		Chat temp = findMyChat(name);
                 		temp.getPW1().println("EXITCHATREQUEST");
@@ -195,12 +228,6 @@ public class Server {
                 System.out.println(e.getMessage());
             } 
             finally {
-                if (name != null){
-                	usernames.remove(name); 
-                	Chat temp = findMyChat(name);
-                	chats.remove(temp);
-                }
-                if (outputWriter != null) writers.remove(outputWriter);
                 try{
                 	socket.close();
                 }
