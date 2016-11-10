@@ -8,7 +8,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Objects;
 
-public class Server {
+public class chatd {
 	
 	//Private Fields
 	private static final int PORT = 50026;

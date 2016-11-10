@@ -129,7 +129,6 @@ public class Client {
 			String serverAddress = getServerAddress();
 			Integer portNum = Integer.parseInt(getPortNumber());
 			Socket socket = new Socket(serverAddress, portNum);
-			
 			//Create input and output interpreters/writers.
 			inputReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			outputWriter = new PrintWriter(socket.getOutputStream(), true);
@@ -155,6 +154,7 @@ public class Client {
     	catch(IOException e){
     		System.out.println("Client Error: " + e.getMessage());
     	}
+    	
     }
     
     //Main method for running client.
